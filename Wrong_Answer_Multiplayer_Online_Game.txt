@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>جاوب غلط 😂 - لعبة الأونلاين المباشرة</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- PeerJS for Realtime Multiplayer without Backend Server -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+    body { font-family: 'Tajawal', sans-serif; }
+    .pulse-glow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-white">
+
+  <!-- HEADER -->
+  <header class="p-4 bg-slate-800/90 border-b border-purple-500/20 flex items-center justify-between sticky top-0 z-30 backdrop-blur">
+    <div class="flex items-center gap-3">
+      <div class="bg-pink-500 p-2 rounded-xl shadow-lg shadow-pink-500/30">
+        <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+      </div>
+      <h1 class="text-xl font-black text-amber-300 tracking-wide">جاوب غلط 😂</h1>
+    </div>
+
+    <div id="user-badge" class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl">
+      <span id="my-avatar" class="text-xl">🦊</span>
+      <span id="my-name" class="text-xs font-bold text-slate-200">لاعب</span>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-center">
+
+    <!-- 1. HOME SCREEN -->
+    <div id="screen-home" class="flex flex-col items-center text-center space-y-6">
+      <div class="w-24 h-24 bg-gradient-to-tr from-pink-500 to-amber-400 rounded-full flex items-center justify-center text-5xl shadow-xl shadow-pink-500/20 animate-bounce">
+        🤪
+      </div>
+
+      <div class="space-y-1">
+        <h2 class="text-2xl font-black text-white">اختر الإجابة الخاطئة لتفوز!</h2>
+        <p class="text-slate-400 text-xs">لعبة التحدي والضحك الجماعي المباشر ⚡</p>
+      </div>
+
+      <!-- User Info Config -->
+      <div class="w-full bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-4 shadow-xl">
+        <div class="text-right">
+          <label class="text-xs font-bold text-slate-400">اسمك داخل اللعبة:</label>
+          <input id="input-name" type="text" value="حبيبي 💖" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white mt-1 focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="text-right">
+          <label class="text-xs font-bold text-slate-400">اختر أفتارك:</label>
+          <div id="avatar-selector" class="flex gap-2 overflow-x-auto py-2">
+            <!-- Avatars populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="w-full space-y-3">
+        <button id="btn-create-room" onclick="createRoom()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 font-black text-slate-950 rounded-2xl shadow-lg hover:opacity-95 flex items-center justify-center gap-2 text-base">
+          <i data-lucide="zap" class="w-5 h-5 fill-current"></i>
+          إنشاء غرفة جديدة
+        </button>
+
+        <div class="flex gap-2">
+          <input id="input-room-code" type="text" placeholder="أدخل كود الدعوة..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-center text-amber-400 font-mono font-bold uppercase focus:outline-none">
+          <button onclick="joinRoom()" class="px-6 bg-purple-600 font-bold rounded-xl text-sm hover:bg-purple-500 flex items-center justify-center">
+            انضمام
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. LOBBY SCREEN -->
+    <div id="screen-lobby" class="hidden bg-slate-800/90 p-5 rounded-2xl border border-purple-500/30 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between bg-slate-900 p-3.5 rounded-xl border border-slate-700">
+        <div>
+          <span class="text-[10px] text-slate-400">كود الغرفة الخاص بكما:</span>
+          <div id="display-room-code" class="text-2xl font-black font-mono text-amber-400 tracking-wider">----</div>
+        </div>
+        <button onclick="copyInviteLink()" class="px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+          <i data-lucide="copy" class="w-4 h-4"></i>
+          <span id="copy-btn-text">نسخ الكود</span>
+        </button>
+      </div>
+
+      <div class="space-y-2">
+        <h4 class="text-right text-xs font-bold text-slate-400">اللاعبون المتصلون بالغرفة:</h4>
+        <div id="players-list" class="grid grid-cols-2 gap-2">
+          <!-- Connected players will appear here -->
+        </div>
+      </div>
+
+      <button id="btn-start-game" onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-amber-400 to-pink-500 font-black text-slate-950 rounded-xl shadow-lg flex items-center justify-center gap-2">
+        <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+        بدء المباراة الآن!
+      </button>
+    </div>
+
+    <!-- 3. GAMEPLAY SCREEN -->
+    <div id="screen-game" class="hidden space-y-4">
+      <!-- Players Score Header -->
+      <div id="game-scores-bar" class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center text-xs">
+        <!-- Scores injected dynamically -->
+      </div>
+
+      <!-- Question Box -->
+      <div class="bg-slate-800/90 p-5 rounded-2xl border border-purple-500/30 text-center space-y-4 shadow-xl">
+        <div id="question-category" class="inline-block text-[10px] bg-purple-900/60 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-bold">
+          معلومات عامة
+        </div>
+
+        <h2 id="question-text" class="text-lg font-bold text-white leading-relaxed">جاري تحميل السؤال...</h2>
+
+        <div class="text-[11px] text-pink-400 font-bold animate-pulse">
+          ⚠️ اختر الإجابة الخاطئة لحصد النقاط!
+        </div>
+
+        <!-- Options Cards -->
+        <div id="options-container" class="grid grid-cols-1 gap-2.5 pt-2">
+          <!-- Options injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Quick Reaction Buttons -->
+      <div class="flex gap-2 overflow-x-auto py-1">
+        <button onclick="sendQuickTaunt('ضحكت عليك! 🤣')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded-xl border border-slate-700 whitespace-nowrap">
+          ضحكت عليك! 🤣
+        </button>
+        <button onclick="sendQuickTaunt('جاوب صح وخسر! 😂')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded-xl border border-slate-700 whitespace-nowrap">
+          جاوب صح وخسر! 😂
+        </button>
+        <button onclick="sendQuickTaunt('استفزني إبداعك! 💀')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded-xl border border-slate-700 whitespace-nowrap">
+          استفزني إبداعك! 💀
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. RESULTS SCREEN -->
+    <div id="screen-results" class="hidden bg-slate-800/90 p-6 rounded-2xl border border-amber-400/30 text-center space-y-5 shadow-2xl">
+      <div class="text-5xl animate-bounce">🏆</div>
+      <h2 class="text-2xl font-black text-amber-300">انتهت الجولة!</h2>
+
+      <div id="results-list" class="space-y-2">
+        <!-- Results injected here -->
+      </div>
+
+      <button onclick="restartGame()" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 font-black text-slate-950 rounded-xl text-sm">
+        إعادة اللعب مجدداً 🔄
+      </button>
+    </div>
+
+  </main>
+
+  <!-- FLOATING CHAT PANEL -->
+  <div id="chat-container" class="hidden">
+    <button onclick="toggleChat()" class="fixed bottom-4 left-4 bg-purple-600 text-white p-3.5 rounded-full shadow-2xl border border-purple-400 z-50">
+      <i data-lucide="message-square" class="w-6 h-6"></i>
+    </button>
+
+    <div id="chat-box" class="hidden fixed bottom-20 left-4 w-72 h-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
+      <div class="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center text-xs font-bold">
+        <span>الشات المباشر 💬</span>
+        <button onclick="toggleChat()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-right text-xs">
+        <!-- Messages -->
+      </div>
+
+      <form onsubmit="sendChatMessage(event)" class="p-2 bg-slate-800 border-t border-slate-700 flex gap-1">
+        <input id="chat-input" type="text" placeholder="اكتب رسالة..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none">
+        <button type="submit" class="p-2 bg-purple-600 text-white rounded-lg">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- GAME SCRIPT LOGIC -->
+  <script>
+    const AVATARS = ['🐶', '🐱', '🦊', '🦁', '🐸', '🐼', '🐯', '🦄', '🐙', '🐵', '🦉', '👑'];
+    const QUESTIONS = [
+      { id: 1, category: "حيوانات", q: "ما هو الحيوان المعروف بسفينة الصحراء؟", correct: "الجمل", options: ["الجمل", "الفهد", "السمك", "النعامة"] },
+      { id: 2, category: "علوم", q: "ما هو الغاز الأساسي لتنفس الإنسان؟", correct: "الأكسجين", options: ["الأكسجين", "النيتروجين", "الخشب", "البنزين"] },
+      { id: 3, category: "جغرافيا", q: "ما هي عاصمة جمهورية مصر العربية؟", correct: "القاهرة", options: ["القاهرة", "لندن", "طوكيو", "الرياض"] },
+      { id: 4, category: "معلومات عامة", q: "كم عدد أيام الأسبوع؟", correct: "7 أيام", options: ["7 أيام", "30 يوم", "3 أيام", "100 يوم"] },
+      { id: 5, category: "طعام", q: "فاكهة حمراء وبها بذور سوداء وتؤكل في الصيف؟", correct: "البطيخ", options: ["البطيخ", "الخيار", "اللحم", "الخبز"] },
+      { id: 6, category: "رياضة", q: "كم عدد لاعبي فريق كرة القدم داخل الملعب؟", correct: "11 لاعب", options: ["11 لاعب", "50 لاعب", "لاعب واحد", "2 لاعبان"] },
+      { id: 7, category: "تكنولوجيا", q: "ما الجهاز الذي تستخدمه للاتصال والتصفح؟", correct: "الهاتف الذكي", options: ["الهاتف الذكي", "الغسالة", "الثلاجة", "المروحة"] },
+      { id: 8, category: "تاريخ", q: "من هم بناة أهرامات الجيزة الخالدة؟", correct: "الفراعنة", options: ["الفراعنة", "الرومان", "فضائيون", "الرواد"] },
+      { id: 9, category: "مضحك", q: "ما الذي ينزل من السحاب عندما تمطر السماء؟", correct: "المطر / الماء", options: ["المطر / الماء", "عصير برتقال", "بيتزا طازجة", "نقود ورقية"] },
+      { id: 10, category: "سهل جدًا", q: "ما هي نتيجة 1 + 1؟", correct: "2", options: ["2", "100", "صفر", "مليون"] }
+    ];
+
+    let myAvatar = '🦊';
+    let myName = 'لاعب';
+    let peer = null;
+    let conn = null;
+    let isHost = false;
+    let roomCode = '';
+    
+    let gameState = {
+      round: 0,
+      scores: {},
+      players: {}
+    };
+
+    // Initialize UI
+    window.onload = () => {
+      lucide.createIcons();
+      renderAvatars();
+
+      // Check URL for room parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam) {
+        document.getElementById('input-room-code').value = roomParam;
+      }
+    };
+
+    function renderAvatars() {
+      const container = document.getElementById('avatar-selector');
+      container.innerHTML = AVATARS.map(av => `
+        <button onclick="selectAvatar('${av}')" class="avatar-btn text-xl p-2 rounded-xl bg-slate-900 border border-slate-700 transition ${av === myAvatar ? 'border-amber-400 bg-purple-900/40' : ''}">
+          ${av}
+        </button>
+      `).join('');
+    }
+
+    function selectAvatar(av) {
+      myAvatar = av;
+      document.getElementById('my-avatar').innerText = av;
+      renderAvatars();
+    }
+
+    function showScreen(id) {
+      ['screen-home', 'screen-lobby', 'screen-game', 'screen-results'].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    // PeerJS Networking setup
+    function createRoom() {
+      myName = document.getElementById('input-name').value || 'لاعب 1';
+      document.getElementById('my-name').innerText = myName;
+
+      roomCode = 'JAWB-' + Math.floor(1000 + Math.random() * 9000);
+      isHost = true;
+
+      peer = new Peer(roomCode);
+
+      peer.on('open', (id) => {
+        document.getElementById('display-room-code').innerText = id;
+        document.getElementById('chat-container').classList.remove('hidden');
+        showScreen('screen-lobby');
+
+        gameState.players[id] = { name: myName, avatar: myAvatar, score: 0 };
+        renderLobbyPlayers();
+      });
+
+      peer.on('connection', (connection) => {
+        conn = connection;
+        setupConnectionListeners();
+      });
+    }
+
+    function joinRoom() {
+      myName = document.getElementById('input-name').value || 'لاعب 2';
+      document.getElementById('my-name').innerText = myName;
+
+      roomCode = document.getElementById('input-room-code').value.trim().toUpperCase();
+      if (!roomCode) return alert('يرجى أدخال كود الغرفة أولاً');
+
+      isHost = false;
+      peer = new Peer();
+
+      peer.on('open', () => {
+        conn = peer.connect(roomCode);
+        setupConnectionListeners();
+      });
+    }
+
+    function setupConnectionListeners() {
+      conn.on('open', () => {
+        document.getElementById('chat-container').classList.remove('hidden');
+        showScreen('screen-lobby');
+
+        // Send info to peer
+        conn.send({
+          type: 'JOIN',
+          name: myName,
+          avatar: myAvatar
+        });
+      });
+
+      conn.on('data', (data) => {
+        handleIncomingData(data);
+      });
+    }
+
+    function handleIncomingData(data) {
+      switch (data.type) {
+        case 'JOIN':
+          gameState.players[conn.peer] = { name: data.name, avatar: data.avatar, score: 0 };
+          renderLobbyPlayers();
+          if (isHost) {
+            conn.send({ type: 'SYNC_LOBBY', players: gameState.players });
+          }
+          break;
+
+        case 'SYNC_LOBBY':
+          gameState.players = data.players;
+          renderLobbyPlayers();
+          break;
+
+        case 'START_GAME':
+          gameState.round = 0;
+          showScreen('screen-game');
+          loadRoundQuestion();
+          break;
+
+        case 'ANSWER':
+          if (isHost) {
+            // Calculate score & move next
+            gameState.players[conn.peer].score += data.points;
+            gameState.round++;
+            
+            if (gameState.round < QUESTIONS.length) {
+              broadcast({ type: 'NEXT_ROUND', round: gameState.round, players: gameState.players });
+              loadRoundQuestion();
+            } else {
+              broadcast({ type: 'GAME_OVER', players: gameState.players });
+              renderResults();
+            }
+          }
+          break;
+
+        case 'NEXT_ROUND':
+          gameState.round = data.round;
+          gameState.players = data.players;
+          loadRoundQuestion();
+          break;
+
+        case 'GAME_OVER':
+          gameState.players = data.players;
+          renderResults();
+          break;
+
+        case 'CHAT':
+          appendChatMessage(data.sender, data.text);
+          break;
+
+        case 'TAUNT':
+          alert(`${data.sender}: ${data.text}`);
+          break;
+      }
+    }
+
+    function broadcast(data) {
+      if (conn) conn.send(data);
+      handleIncomingData(data);
+    }
+
+    function renderLobbyPlayers() {
+      const container = document.getElementById('players-list');
+      container.innerHTML = Object.values(gameState.players).map(p => `
+        <div class="flex items-center gap-2 p-2.5 bg-slate-900 rounded-xl border border-slate-700">
+          <span class="text-2xl">${p.avatar}</span>
+          <div class="text-right">
+            <div class="text-xs font-bold text-white">${p.name}</div>
+            <span class="text-[10px] text-emerald-400">متصل ⚡</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function startGame() {
+      broadcast({ type: 'START_GAME' });
+    }
+
+    function loadRoundQuestion() {
+      const q = QUESTIONS[gameState.round];
+      document.getElementById('question-category').innerText = q.category;
+      document.getElementById('question-text').innerText = q.q;
+
+      // Render Scores Header
+      document.getElementById('game-scores-bar').innerHTML = Object.values(gameState.players).map(p => `
+        <span class="bg-slate-900 px-3 py-1 rounded-lg text-amber-300 font-bold">
+          ${p.avatar} ${p.name}: ${p.score} نقطة
+        </span>
+      `).join('');
+
+      // Options
+      const container = document.getElementById('options-container');
+      container.innerHTML = q.options.map((opt) => `
+        <button onclick="submitAnswer('${opt}')" class="p-3.5 rounded-xl font-bold text-sm text-right bg-slate-900 hover:bg-purple-900/40 border border-slate-700 text-slate-200 transition">
+          ${opt}
+        </button>
+      `).join('');
+    }
+
+    function submitAnswer(chosenOption) {
+      const q = QUESTIONS[gameState.round];
+      const isWrongAnswer = chosenOption !== q.correct;
+      const points = isWrongAnswer ? 1 : 0; // Wrong answer gives 1 point!
+
+      if (isHost) {
+        gameState.players[peer.id].score += points;
+        gameState.round++;
+        if (gameState.round < QUESTIONS.length) {
+          broadcast({ type: 'NEXT_ROUND', round: gameState.round, players: gameState.players });
+        } else {
+          broadcast({ type: 'GAME_OVER', players: gameState.players });
+        }
+      } else {
+        conn.send({ type: 'ANSWER', points: points });
+      }
+    }
+
+    function renderResults() {
+      showScreen('screen-results');
+      const list = document.getElementById('results-list');
+      const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
+      
+      list.innerHTML = sorted.map((p, idx) => `
+        <div class="flex justify-between items-center p-3 bg-slate-900 rounded-xl border border-slate-700">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-amber-400">#${idx + 1}</span>
+            <span>${p.avatar}</span>
+            <span class="font-bold text-sm">${p.name}</span>
+          </div>
+          <span class="font-black text-amber-400">${p.score} نقطة</span>
+        </div>
+      `).join('');
+    }
+
+    function copyInviteLink() {
+      navigator.clipboard.writeText(roomCode);
+      document.getElementById('copy-btn-text').innerText = 'تم النسخ!';
+      setTimeout(() => document.getElementById('copy-btn-text').innerText = 'نسخ الكود', 2000);
+    }
+
+    // Chat Logic
+    function toggleChat() {
+      document.getElementById('chat-box').classList.toggle('hidden');
+    }
+
+    function sendChatMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      broadcast({ type: 'CHAT', sender: myName, text: text });
+      input.value = '';
+    }
+
+    function appendChatMessage(sender, text) {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML += `
+        <div class="bg-slate-800 p-2 rounded-xl border border-slate-700">
+          <span class="text-purple-400 font-bold">${sender}: </span>
+          <span class="text-slate-200">${text}</span>
+        </div>
+      `;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendQuickTaunt(msg) {
+      broadcast({ type: 'TAUNT', sender: myName, text: msg });
+    }
+
+    function restartGame() {
+      showScreen('screen-home');
+      location.reload();
+    }
+  </script>
+</body>
+</html>
